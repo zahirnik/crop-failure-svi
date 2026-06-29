@@ -1,59 +1,81 @@
 # Notebooks
 
-The full pipeline used in the analysis spans 28 Jupyter / Colab notebooks
-across two phases (initial exploratory pass in 2023, refined ML pass in
-2024). The two shipped in this repository are the **most representative**
-of the ML stage of the project; the remaining notebooks were
-preprocessing / plotting helpers that produced the figures embedded in
-the [main README](../README.md) and the [methodology doc](../docs/methodology.md).
+This repository ships **all 28 notebooks** from the analysis pipeline,
+split into two phases:
 
-## Notebooks in this repository
+- **Phase 1 (2023)** — `phase1_2023/` — 17 notebooks. The first
+  exploratory pass through the data: download, harmonise, build the SVI
+  and weather indices, produce the cross-cut plots and the five paper
+  sections of figures.
+- **Phase 2 (2024)** — `phase2_2024/` — 11 notebooks. The refined pass:
+  per-crop SVI weighting, RMA insurance integration, and the
+  machine-learning models (classification + yield-anomaly regression).
 
-| file | what it does |
-|---|---|
-| `09_ml_failure_tuning_final.ipynb` | Hyperparameter-tuned crop-failure classifier (XGBoost / Random Forest variants) trained on the merged county-year feature table. Loads the feature panel, runs a stratified grouped train/test split, fits and tunes the classifier, evaluates with ROC AUC / F1 / per-class precision and recall, and writes a SHAP-summary feature ranking. |
-| `10_ml_yield_anomaly.ipynb` | Detrended yield-anomaly regressor. Uses a moving-window detrending of the NASS county-yield series and predicts negative-anomaly events from the same SVI + climate + insurance feature panel. |
+Every notebook has been **sanitised** for public release:
 
-Both notebooks reference an external `<DATA_ROOT>/` directory that should
-point at a working folder mirroring the original Google Drive layout. To
-reproduce, materialise the parquet / CSV files documented in
-[`docs/data_sources.md`](../docs/data_sources.md) and rebind `<DATA_ROOT>`
-to that directory.
+- Google Colab `drive.mount()` cells were dropped.
+- The original `/content/drive/MyDrive/US_Crops/` data paths were rewritten
+  to a `<DATA_ROOT>/` placeholder.
+- Cell-level `executionInfo.user` `displayName` / `userId` fields were
+  redacted.
+- The notebook-level `authorship_tag` was removed.
 
-## Full pipeline (notebooks not shipped here)
+To reproduce, set `<DATA_ROOT>` to a local working directory mirroring
+the original Drive layout (see [`../docs/data_sources.md`](../docs/data_sources.md))
+and run the notebooks in the order below.
 
-For completeness, the broader pipeline was structured as follows. Notebook
-numbering matches the original ordering on disk; the brief description
-lists the one-liner each notebook contributed.
+---
 
-### Phase 1 — exploratory pass (2023)
+## Phase 1 (2023) — `phase1_2023/`
 
-| step | role |
-|---|---|
-| 1 | Pull the USDA FSA crop-acre `.zip`s for 2009-2023; unzip and standardise the per-county tables |
-| 2 | Filter to the 8 target crops, harmonise irrigation labels, write a tidy per-county-year `failed-acres` table |
-| 3 | Merge the failure table with NASS Quick-Stats county yield |
-| 4–5 | Pull the CDC Social Vulnerability Index (SVI) at census-tract level for 2000 / 2010 / 2014 / 2016 / 2018 / 2020 and join to FIPS |
-| 6 | Build the per-county weather index (drought area + heatwave area + USDM) |
-| 7 | Join counties to NOAA US Climate Regions |
-| 8 | Drop outlier counties (very small or very large planted area) |
-| 9 | Per-county failure-share choropleth maps |
-| 10 | SVI ↔ failure density plots (one per crop) |
-| 11 | Sankey / heatmap / spider / diverging plots tying crop × irrigation × SVI |
-| 12 | Yield detrending (moving-average) |
-| 13–17 | Final-figure builders for the five paper sections (counties / drivers / cross-cuts / inequality / groundwater) |
+| # | file | role |
+|---|---|---|
+| 01 | `01_crop_failure_data_preparation.ipynb` | Pull the USDA FSA crop-acre `.zip`s for 2009-2023; unzip and standardise the per-county tables. |
+| 02 | `02_crop_yield_failure_preprocess.ipynb` | Filter to the 8 target crops, harmonise irrigation labels, write a tidy per-county-year `failed-acres` table. |
+| 03 | `03_crop_yield_failure_merge.ipynb` | Merge the failure table with NASS Quick-Stats county yield. |
+| 04 | `04_svi_data_preparation.ipynb` | Pull the CDC Social Vulnerability Index (SVI) at census-tract level for 2000 / 2010 / 2014 / 2016 / 2018 / 2020 and join to FIPS. |
+| 05 | `05_svi_data_preparation_2_-_svi_failure_plot.ipynb` | Second SVI prep step + initial SVI ↔ failure plots. |
+| 06 | `06_wheather_index.ipynb` | Build the per-county weather index (drought area + heatwave area + USDM). |
+| 07 | `07_join_counties_cilmate_regions.ipynb` | Join counties to NOAA US Climate Regions. |
+| 08 | `08_remove_very_small_very_big_crop_areas.ipynb` | Drop outlier counties (very small or very large planted area). |
+| 09 | `09_map_plots.ipynb` | Per-county failure-share choropleth maps. |
+| 10 | `10_svi_-_crop_failure_density_plot.ipynb` | SVI ↔ failure density plots (one per crop). |
+| 11 | `11_sankey_diagram_heatmap_group_bar_chart_spider_diverging.ipynb` | Sankey, heatmap, spider, and diverging plots tying crop × irrigation × SVI. |
+| 12 | `12_yield_detrend.ipynb` | Yield detrending (moving-average) for the anomaly target. |
+| 13 | `13_final_plots_section_1.ipynb` | Final paper figures, section 1 (counties / failure baseline). |
+| 14 | `14_final_plots_section_2.ipynb` | Final paper figures, section 2 (climate drivers). |
+| 15 | `15_final_plots_section_3.ipynb` | Final paper figures, section 3 (cross-cuts, Sankey). |
+| 16 | `16_final_plots_section_4.ipynb` | Final paper figures, section 4 (inequality plots). |
+| 17 | `17_final_plots_section_5_-_ground_water.ipynb` | Final paper figures, section 5 (groundwater dimension). |
 
-### Phase 2 — refined pass (2024)
+## Phase 2 (2024) — `phase2_2024/`
 
-| step | role |
-|---|---|
-| 1 | Tract-level SVI weighted to county scale by the per-crop planted area |
-| 2 | Refined preprocessing of the FSA failure table (better state-name harmonisation, irrigation taxonomy) |
-| 3–4 | New final-figure builders for Section 1 and Section 2 |
-| 5 | USDA Risk Management Agency (RMA) crop-insurance integration |
-| 6 | First classification pass — un-tuned baseline ML on the merged panel |
-| 7 | Second pass — feature pruning + cross-validation |
-| 8 | "Final" classification with held-out evaluation |
-| 9 | **Tuned final classifier** *(shipped here as `09_ml_failure_tuning_final.ipynb`)* |
-| 10 | Yield-failure regression model trained on the same panel |
-| 11 | **Moving-window yield-anomaly model** *(shipped here as `10_ml_yield_anomaly.ipynb`)* |
+| # | file | role |
+|---|---|---|
+| 01 | `01_crop_area_weighted_svi_for_counties.ipynb` | Tract-level SVI weighted to county scale by the per-crop planted area (the refined SVI used by the ML models). |
+| 02 | `02_crop_failure_preprocess_-_new_modified.ipynb` | Refined preprocessing of the FSA failure table (better state-name harmonisation, irrigation taxonomy). |
+| 03 | `03_final_plots_section_1.ipynb` | Updated final-figure builder for section 1. |
+| 04 | `04_final_plots_section_2.ipynb` | Updated final-figure builder for section 2. |
+| 05 | `05_insurance_data_process.ipynb` | USDA Risk Management Agency (RMA) crop-insurance integration. |
+| 06 | `06_crop_failure_machine_learning.ipynb` | First classification pass — un-tuned baseline ML on the merged panel. |
+| 07 | `07_crop_failure_machine_learning.ipynb` | Second pass — feature pruning + cross-validation (small notebook, follow-on tweaks). |
+| 08 | `08_crop_failure_machine_learning_final.ipynb` | "Final" classification with held-out evaluation. |
+| 09 | `09_crop_failure_machine_learning_final_-_tuning.ipynb` | **Hyperparameter-tuned final classifier** (the SHAP plot in the main README is from this notebook). |
+| 10 | `10_crop_failure_yield_machine_learning_final.ipynb` | Yield-failure regression model trained on the same panel. |
+| 11 | `11_yield_movwinave_anomaly_machine_learning.ipynb` | **Moving-window yield-anomaly model** with windowed features. |
+
+---
+
+## Recommended execution order
+
+For a clean reproduction from scratch:
+
+1. Phase 1 notebooks 01 → 12 (data ingest, indices, detrend).
+2. Phase 2 notebooks 01 → 02 (refined SVI + preprocess) and 05
+   (insurance) to update the merged feature panel.
+3. Phase 2 notebooks 06 → 09 in sequence for the classification model
+   (each builds on the previous one's saved artefacts).
+4. Phase 2 notebooks 10 and 11 for the yield-failure and yield-anomaly
+   regression models.
+5. Either Phase 1 notebooks 13 → 17 or Phase 2 notebooks 03 → 04 for the
+   final figures (the Phase 2 ones supersede the Phase 1 sections 1–2).

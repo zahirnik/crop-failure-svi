@@ -183,20 +183,31 @@ flowchart TD
 │   ├── data_sources.md                          # every input dataset with link + licence
 │   └── figures/                                 # 10 publication-quality PNGs (~6 MB)
 ├── notebooks/
-│   ├── README.md                                # notebook map
-│   ├── 09_ml_failure_tuning_final.ipynb         # tuned classifier (shipped)
-│   └── 10_ml_yield_anomaly.ipynb                # yield-anomaly model (shipped)
+│   ├── README.md                                # notebook map (full pipeline)
+│   ├── phase1_2023/                             # 17 notebooks — exploratory pass
+│   │   ├── 01_crop_failure_data_preparation.ipynb
+│   │   ├── 02_crop_yield_failure_preprocess.ipynb
+│   │   ├── ...
+│   │   └── 17_final_plots_section_5_-_ground_water.ipynb
+│   └── phase2_2024/                             # 11 notebooks — refined pass
+│       ├── 01_crop_area_weighted_svi_for_counties.ipynb
+│       ├── ...
+│       ├── 09_crop_failure_machine_learning_final_-_tuning.ipynb
+│       ├── 10_crop_failure_yield_machine_learning_final.ipynb
+│       └── 11_yield_movwinave_anomaly_machine_learning.ipynb
 └── data/
     ├── state_name_mapping.csv                   # FSA state-name lookup (USDA legacy)
     └── fsa_acre_data_sources.md                 # canonical USDA FSA URLs, 2009-2023
 ```
 
-The 28-step notebook pipeline (Phase 1 — 17 exploratory notebooks,
-Phase 2 — 11 refined notebooks) is documented in
-[`notebooks/README.md`](notebooks/README.md). The two ML notebooks shipped
-here are the most representative of the modelling stage; the rest were
-preprocessing helpers whose role is described in that file and in
-[`docs/methodology.md`](docs/methodology.md).
+The **full 28-notebook pipeline** is included (Phase 1 — 17 exploratory
+notebooks for data ingest, indices, and per-section figures; Phase 2 — 11
+refined notebooks for the per-crop SVI weighting, RMA insurance
+integration, and the machine-learning models). Every notebook has been
+sanitised for public release — Drive mount cells dropped, data paths
+rewritten to `<DATA_ROOT>/`, author metadata redacted. See
+[`notebooks/README.md`](notebooks/README.md) for the full per-notebook
+map and the recommended execution order.
 
 ---
 
