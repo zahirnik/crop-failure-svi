@@ -1,6 +1,7 @@
-# crop-failure-svi
+# crop-failure-vulnerability
 
-**Mapping where US crops fail, and who lives in the counties that bear it.**
+**US Crop Failure and the Social Vulnerability Index — mapping where
+US crops fail, and who lives in the counties that bear it.**
 
 *A multi-source 15-year pipeline tying USDA county-level crop-failure
 records to climate hazards, groundwater dependence, crop insurance, and
