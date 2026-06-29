@@ -1,106 +1,151 @@
 # crop-failure-svi
 
-**Where US crops fail, and who lives in the counties that bear it — a
-multi-source pipeline tying USDA crop-failure records to climate hazards,
-groundwater, and the CDC Social Vulnerability Index, with interpretable
-machine-learning attribution.**
+**Mapping where US crops fail, and who lives in the counties that bear it.**
 
-This repository documents an end-to-end study of **county-level crop
-failure across the contiguous United States** from 2009 to 2023.
-The work joins:
-
-- 15 years of **USDA Farm Service Agency** per-county **failed-acres and
-  prevented-planting records**;
-- **NASS Quick-Stats** annual county yields, detrended;
-- **CDC Social Vulnerability Index** (SVI) at census-tract level, weighted
-  up to counties by the per-crop planted area;
-- The **US Drought Monitor** (USDM) annual drought-area aggregates;
-- A **county-level heatwave-frequency index**;
-- USGS surface- and **ground-water** withdrawal rates;
-- USDA **Risk Management Agency crop-insurance** loss-cause data; and
-- NOAA **US Climate Regions** as a stratifying covariate.
-
-The pipeline produces (i) **per-crop national maps** of crop failure and
-yield negative-anomaly hotspots, (ii) **multi-axis cross-cuts** between
-crop type, irrigation regime, and social vulnerability tier, (iii) **density
-plots** that quantify how failure burden tracks SVI percentile, and (iv) an
-**interpretable machine-learning classifier** trained on the merged
-county-year panel with SHAP attribution per feature.
+*A multi-source 15-year pipeline tying USDA county-level crop-failure
+records to climate hazards, groundwater dependence, crop insurance, and
+the CDC Social Vulnerability Index — with interpretable machine-learning
+attribution.*
 
 ---
 
-## Headline Findings
+## At a glance
 
-### Crop failure does not fall on US counties evenly
+| coverage |  |
+|---|---|
+| **Time span** | 15 crop years (2009–2023) |
+| **Spatial unit** | ~3,100 US counties |
+| **Crops** | 8 commodity crops (corn, soybeans, cotton, wheat, barley, oats, hay/alfalfa, sorghum) |
+| **Irrigation regimes** | irrigated, non-irrigated, combined |
+| **Primary outcome** | per-county per-crop `failure_share = Failed Acres / Planted Acres` |
+| **Stressor inputs** | annual drought-area frequency, heatwave-day frequency, 9 NOAA climate-region one-hots, USGS groundwater + surface-water withdrawals, USDA RMA insurance loss-cause, NOAA temperature thresholds (`Thr0` … `Thr35`), 30/90-day SPI / SPEI / PDSI drought indices, VPD (vapour pressure deficit) features |
+| **Distributional layer** | CDC Social Vulnerability Index — 4 themes + composite, weighted from tract level to county by per-crop planted area |
+| **Models** | hyperparameter-tuned gradient-boosted classifier (failure / no-failure) + moving-window yield-anomaly regressor, both with SHAP attribution |
 
-![Mean crop failure share across US counties](docs/figures/Map_Counties_Crop_Failure_meanFailShare.png)
+---
 
-Mean **failure share** (failed acres ÷ planted acres) per county, 2009-2023.
-Concentrations in the Northern Plains belt, the Mississippi Delta, and
-pockets of Texas dominate.
+## The story in three acts
 
-### Per-crop yield negative anomalies highlight different geographies
+### Act I — Where and when US crops fail
+
+**Where.** The mean per-county failure share over 2009–2023 picks out
+three clear hotspots: the **Northern Plains** (the spring-wheat / sugar-
+beet belt of the Dakotas and northern Minnesota), the **Mississippi
+Delta**, and parts of the **Southern Plains** of Texas and Oklahoma.
+
+![Mean crop failure share, US counties, 2009-2023](docs/figures/Map_Counties_Crop_Failure_meanFailShare.png)
+
+**Which crops.** Each commodity has its own stress geography. Corn
+concentrates in the rain-fed edges of the Eastern Corn Belt and the
+central Plains; soybeans in the Mississippi corridor and the eastern
+Great Plains; wheat across the Northern Plains, the Pacific Northwest,
+and the Texas Panhandle.
 
 | | | |
 |:---:|:---:|:---:|
-| ![Corn](docs/figures/Map_Counties_Yield_negAnomaly_CORN.png) | ![Soybeans](docs/figures/Map_Counties_Yield_negAnomaly_SOYBEANS.png) | ![Wheat](docs/figures/Map_Counties_Yield_negAnomaly_WHEAT.png) |
-| **CORN** | **SOYBEANS** | **WHEAT** |
+| ![Corn yield anomaly](docs/figures/Map_Counties_Yield_negAnomaly_CORN.png) | ![Soybeans yield anomaly](docs/figures/Map_Counties_Yield_negAnomaly_SOYBEANS.png) | ![Wheat yield anomaly](docs/figures/Map_Counties_Yield_negAnomaly_WHEAT.png) |
+| Corn — fraction of years with negative yield anomaly | Soybeans | Wheat |
 
-Fraction of years 2009-2023 with a county-level negative yield anomaly. Each
-crop has a different stress footprint — corn concentrates in the rain-fed
-Eastern Corn Belt edges + the Plains, soybeans in the Mississippi corridor
-and Eastern Plains, wheat in the Great Plains, Pacific Northwest, and the
-Texas Panhandle.
+**When.** The annual time series of failure events overlaid on
+drought-area and heatwave-area fractions shows the **2012 US megadrought**
+spike (~4,750 failure events that year) and the secondary 2011 spike;
+the corresponding land-area drought stack peaks at ~85 % of US ag
+acreage in the same year.
 
-### The climate hazards driving failure are themselves spatially uneven
+![Annual failure-events line over drought + heatwave area stacked bars](docs/figures/AllCropsFailure_vs_DroughtArea_HeatwaveArea_TimeSeries.png)
+
+### Act II — Why: climate, water, and the social fabric
+
+**Climate.** Annual drought-frequency and heatwave-frequency at county
+resolution have very different geographies. Drought concentrates in the
+Southwest (Utah, Nevada, Arizona, New Mexico, West Texas); heatwaves
+intensify across a broader Southern band, with the Plains a particular
+hotspot.
 
 | | |
 |:---:|:---:|
-| ![Drought](docs/figures/Map_Counties_Drought_AnnualFreq.png) | ![Heatwave](docs/figures/Map_Counties_HeatWave_AnnualFreq.png) |
+| ![County drought annual frequency](docs/figures/Map_Counties_Drought_AnnualFreq.png) | ![County heatwave annual frequency](docs/figures/Map_Counties_HeatWave_AnnualFreq.png) |
 | **Drought** annual frequency | **Heatwave** annual frequency |
 
-USDM-derived annual drought frequency (left) is concentrated in the
-Southwest; heatwave frequency (right) covers a broader Southern band but
-intensifies in the Plains. Comparison with the failure maps above
-quantifies how much of each crop's stress geography is explained by
-climate.
+**Water.** USGS withdrawal rates expose the **groundwater story**: the
+High Plains Aquifer (Nebraska, Kansas, the Texas Panhandle), the Central
+Valley, and the Mississippi Embayment carry by far the highest per-acre
+groundwater dependence in the country. Crop-failure ML feature
+importance (Act III, below) confirms `gwu_rate` (groundwater-usage rate)
+as a top-tier predictor for several crops.
 
-### Social vulnerability is the third axis
+![Per-county groundwater usage rate](docs/figures/Map_Counties_GroundwaterUsageRate.png)
 
-![SVI themes composite](docs/figures/Map_Counties_SVI_RPL_THEMES.png)
+**Social.** The CDC SVI composite percentile shows the familiar
+**Deep-South / Texas borderlands / Appalachia** pattern.
 
-CDC SVI overall percentile (theme composite) per county. High-vulnerability
-counties cluster across the Deep South, the Texas/Mexico borderlands, and
-Appalachia.
+![SVI composite percentile per county](docs/figures/Map_Counties_SVI_RPL_THEMES.png)
 
-### Crop type → irrigation regime → vulnerability tier
+### Act III — The cross-cuts: where climate meets vulnerability
 
-![Sankey diagram of crop × irrigation × SVI](docs/figures/Sankey_Crop_Irrigation_SVI.png)
-
-Sankey flow from **crop type → irrigation regime → SVI vulnerability tier**.
+**One image, all three axes.** A Sankey diagram of **crop type →
+irrigation regime → SVI tier** captures the project in one figure.
 Wheat-dominated rain-fed acreage flows disproportionately into the
 medium-to-high SVI tiers; irrigated cotton and corn split more evenly.
-This is the chart that captures the project in one image.
 
-### Failure burden tracks SVI — the headline distributional finding
+![Sankey: crop -> irrigation -> SVI](docs/figures/Sankey_Crop_Irrigation_SVI.png)
 
-![SVI ↔ Failure inequality](docs/figures/InequalityPlot_Failure_SVI_Themes.png)
+**A second cross-cut: climate region → irrigation regime → SVI tier.**
+The South-East (`SE`) and South-Central (`S`) regions carry the bulk of
+flow into the High SVI tier via non-irrigated land; the Northern Great
+Plains (`WNC`, `ENC`) split irrigated/non-irrigated more evenly but skew
+toward Low-Medium SVI.
 
-For every crop, the orange "high failure share" density is **shifted
-toward the higher-SVI end of the distribution** compared with the green
-"low failure share" density. That is: the counties bearing the most
-acres-failed-per-acre-planted skew toward higher social vulnerability.
-The story is consistent across rain-fed and irrigated regimes and across
-all 8 commodity crops in the study.
+![Parallel categories: Climate Region × Irrigation × SVI](docs/figures/ParallelCategories_Climate_Irrigation_SVI.png)
 
-### A trained classifier puts numbers on the drivers
+**The headline distributional finding.** For every crop, the orange "high
+failure share" density is **shifted toward the higher-SVI end of the
+distribution** compared with the green "low failure share" density. That
+is: the counties bearing the most acres-failed-per-acre-planted skew
+toward higher social vulnerability. The pattern is consistent across
+rain-fed and irrigated regimes and across all 8 crops.
 
-![SHAP summary for the CORN classifier](docs/figures/SHAP_Summary_CORN.png)
+![Density of failure share vs SVI percentile, by crop](docs/figures/InequalityPlot_Failure_SVI_Themes.png)
 
-SHAP-summary plot for the **CORN** failure classifier (one of eight
-crop-specific models). The bars rank features by mean absolute SHAP
-contribution; the colour gradient shows whether a feature pushes the
-prediction toward "failure" (red) or "no failure" (blue) at a given value.
+**The correlation matrix.** Underneath this distributional finding sits
+a dense correlation structure between the SVI themes (the dark-red block
+in the upper-left), the temperature thresholds (the dark-red block in
+the lower-right), and the SPEI / SPI / PDSI drought indices in between.
+Reading the correlation matrix is what tells you which features the ML
+models latch on to next.
+
+![Correlation heatmap: failure share, SVI themes, climate features](docs/figures/HeatMap_FailureShare_CorrelationMatrix.jpg)
+
+---
+
+## What the models learned
+
+Per-crop gradient-boosted classifiers were fitted on the merged
+county-year-crop feature panel, with stratified-grouped cross-validation
+(group key = county) and Optuna hyperparameter search. The SHAP-summary
+plots below rank the features by their mean absolute impact on the
+classifier's predicted failure logit. The colour gradient (red = high
+feature value, blue = low) shows whether high values of each feature
+push the prediction toward "failure" or away from it.
+
+| | | |
+|:---:|:---:|:---:|
+| ![SHAP CORN](docs/figures/SHAP_Summary_CORN.png) | ![SHAP SOYBEANS](docs/figures/SHAP_Summary_SOYBEANS.png) | ![SHAP WHEAT](docs/figures/SHAP_Summary_WHEAT.png) |
+| **Corn** | **Soybeans** | **Wheat** |
+
+Three patterns are visible across crops:
+
+1. **Short-window drought indices** (`spei90d-1`, `spei30d-2`, `spi*`)
+   are the top features for both wheat and corn — when the prior
+   3-month SPEI is low (blue dots on the left of the strip), the model
+   pushes strongly toward "failure".
+2. **Vapour pressure deficit** (`VPD-1`, `VPD-Mean`) consistently
+   ranks in the top 10 — high VPD (red dots on the right) drives the
+   classifier toward "failure" for every crop tested.
+3. **Groundwater usage rate** (`gwu_rate`) and the **SVI composite**
+   (`RPL_THEMES`) both surface in the top 15-20 features — confirming
+   that the model is picking up both the hydrology and the social-
+   vulnerability layers we built into the panel.
 
 ---
 
@@ -112,27 +157,27 @@ flowchart TD
     B["NASS Quick-Stats<br/>county yields"]
     C["CDC SVI tract-level<br/>(2000/2010/2014/2016/2018/2020)"]
     D["USDM weekly<br/>drought polygons"]
-    E["NOAA US<br/>Climate Regions"]
+    E["NOAA US<br/>Climate Regions + temperature"]
     F["USGS water use<br/>(surface + ground)"]
     G["USDA RMA<br/>crop insurance"]
 
     P1["01-02. Unzip + tidy<br/>failed-acres table"]
     P2["03. Merge failure<br/>with yield"]
     P3["04-05. SVI prep<br/>(tract -> county weighted<br/>by planted area)"]
-    P4["06. Build weather<br/>+ drought index"]
+    P4["06. Build weather +<br/>drought + VPD index"]
     P5["07-08. Spatial join +<br/>area-outlier filter"]
     P6["12. Yield detrend<br/>(moving window)"]
     P7["modules_2024 05.<br/>Integrate RMA insurance"]
 
-    M["Merged county-year<br/>feature panel"]
+    M["Merged county-year-crop<br/>feature panel"]
 
     F1["09. Map plots"]
     F2["10. Density plots"]
-    F3["11. Sankey / Heatmap /<br/>Spider"]
+    F3["11. Sankey / Heatmap /<br/>Parallel Categories"]
     F4["13-17. Final paper<br/>figures (5 sections)"]
 
     ML1["09 (2024). Tuned crop-<br/>failure classifier"]
-    ML2["10 (2024). Yield-<br/>anomaly model"]
+    ML2["11 (2024). Moving-window<br/>yield-anomaly model"]
 
     OUT1["Per-crop failure maps"]
     OUT2["SVI inequality plots"]
@@ -181,17 +226,17 @@ flowchart TD
 ├── docs/
 │   ├── methodology.md                           # end-to-end method writeup
 │   ├── data_sources.md                          # every input dataset with link + licence
-│   └── figures/                                 # 10 publication-quality PNGs (~6 MB)
+│   └── figures/                                 # 16 publication-quality figures (~8 MB)
 ├── notebooks/
-│   ├── README.md                                # notebook map (full pipeline)
+│   ├── README.md                                # full per-notebook map + execution order
 │   ├── phase1_2023/                             # 17 notebooks — exploratory pass
 │   │   ├── 01_crop_failure_data_preparation.ipynb
 │   │   ├── 02_crop_yield_failure_preprocess.ipynb
-│   │   ├── ...
+│   │   ├── …
 │   │   └── 17_final_plots_section_5_-_ground_water.ipynb
-│   └── phase2_2024/                             # 11 notebooks — refined pass
+│   └── phase2_2024/                             # 11 notebooks — refined pass + ML
 │       ├── 01_crop_area_weighted_svi_for_counties.ipynb
-│       ├── ...
+│       ├── …
 │       ├── 09_crop_failure_machine_learning_final_-_tuning.ipynb
 │       ├── 10_crop_failure_yield_machine_learning_final.ipynb
 │       └── 11_yield_movwinave_anomaly_machine_learning.ipynb
@@ -200,80 +245,90 @@ flowchart TD
     └── fsa_acre_data_sources.md                 # canonical USDA FSA URLs, 2009-2023
 ```
 
-The **full 28-notebook pipeline** is included (Phase 1 — 17 exploratory
-notebooks for data ingest, indices, and per-section figures; Phase 2 — 11
-refined notebooks for the per-crop SVI weighting, RMA insurance
-integration, and the machine-learning models). Every notebook has been
-sanitised for public release — Drive mount cells dropped, data paths
-rewritten to `<DATA_ROOT>/`, author metadata redacted. See
-[`notebooks/README.md`](notebooks/README.md) for the full per-notebook
+All 28 notebooks have been **sanitised** for public release — Google Colab
+`drive.mount()` cells dropped, the original
+`/content/drive/MyDrive/US_Crops/` data paths rewritten to a
+`<DATA_ROOT>/` placeholder, cell-level `executionInfo.user`
+`displayName` / `userId` redacted, and notebook-level `authorship_tag`
+removed.
+
+See [`notebooks/README.md`](notebooks/README.md) for the full per-notebook
 map and the recommended execution order.
 
 ---
 
-## Methodology in one paragraph
+## Methodology in a nutshell
 
-The project starts from the USDA FSA's per-county, per-crop **failed-acres**
-and **prevented-planting** records, which we harmonise into a tidy panel
-keyed by `(year, state-county-FIPS, crop, irrigation_regime)`. We join in
-NASS Quick-Stats county yields, the CDC SVI at census-tract level
-**weighted to county scale by per-crop planted area**, an annual drought-
-and heatwave-frequency index per county derived from USDM, USGS surface-
-and groundwater-withdrawal rates, USDA RMA crop-insurance loss-cause
-codes, and the NOAA US Climate Regions as a stratifier. The resulting
-county-year feature panel feeds two interpretable ML models: a
-**hyperparameter-tuned classifier** that predicts the binary occurrence of
-crop failure, and a **moving-window yield-anomaly regressor** that
-predicts a continuous detrended yield-deviation. SHAP-value attribution
-exposes the relative contribution of climate, water-resource, and
-social-vulnerability features.
+We start from the USDA Farm Service Agency's per-county, per-crop
+**failed-acres** and **prevented-planting** records, which we harmonise
+across the pre-2017 multi-sheet format and the post-2017 single-sheet
+format into a tidy panel keyed by
+`(year, state-county-FIPS, crop, irrigation_regime)`. We join NASS
+Quick-Stats county yields, detrend them with a moving-window estimator,
+and define the regression target as the residual.
 
-See [`docs/methodology.md`](docs/methodology.md) for the full description.
+The CDC Social Vulnerability Index is then **weighted from census-tract
+level up to counties by per-crop planted area**, giving a per-crop SVI
+that is specific to where each commodity is actually grown. An annual
+drought-frequency index per county is derived from USDM polygons, a
+heatwave-frequency index from NOAA temperature normals, surface- and
+groundwater-withdrawal rates from USGS, and USDA RMA crop-insurance
+loss-cause codes from the RMA Summary-of-Business API. The NOAA US
+Climate Regions provide a stratification covariate.
+
+The resulting county-year-crop feature panel feeds two interpretable
+models: a **hyperparameter-tuned classifier** that predicts the binary
+occurrence of crop failure, and a **moving-window yield-anomaly
+regressor** that predicts the continuous detrended-yield deviation.
+SHAP attribution exposes the relative contribution of climate,
+water-resource, and social-vulnerability features. See
+[`docs/methodology.md`](docs/methodology.md) for the full description.
 
 ---
 
 ## Data Sources
 
 Every input dataset, with download URLs and licence notes, is enumerated
-in [`docs/data_sources.md`](docs/data_sources.md). All sources are public,
-US-federal-government or CDC, and free to use.
-
-For the **USDA FSA crop-acre eFOIA files** specifically, the canonical
-2009–2023 URLs are kept in
-[`data/fsa_acre_data_sources.md`](data/fsa_acre_data_sources.md) so the
-download step in the pipeline can be reproduced byte-for-byte.
+in [`docs/data_sources.md`](docs/data_sources.md). All sources are
+public, US-federal-government or CDC, and free to use. For the USDA FSA
+crop-acre eFOIA files specifically, the canonical 2009–2023 URLs are
+kept in [`data/fsa_acre_data_sources.md`](data/fsa_acre_data_sources.md)
+so the download step in the pipeline can be reproduced byte-for-byte.
 
 ---
 
 ## Reproducibility
 
-The notebooks are written to be **runnable on any Jupyter / Colab kernel**
-with the standard scientific-python stack
-(`pandas`, `geopandas`, `numpy`, `scikit-learn`, `xgboost`, `shap`,
-`matplotlib`, `seaborn`, `plotly`). They reference an external
-`<DATA_ROOT>/` placeholder that should point at a working directory holding
-the input data and intermediate parquet files. Setting up `<DATA_ROOT>`
-amounts to:
+The notebooks are written to be runnable on any Jupyter / Colab kernel
+with the standard scientific-python stack (`pandas`, `geopandas`,
+`numpy`, `scikit-learn`, `xgboost`, `shap`, `optuna`, `matplotlib`,
+`seaborn`, `plotly`). They reference an external `<DATA_ROOT>/`
+placeholder that should point at a working directory holding the input
+data and intermediate parquet files. Setting up `<DATA_ROOT>` amounts to:
 
-1. Mirror the directory structure in `docs/data_sources.md`.
-2. Download the FSA acre ZIPs listed in `data/fsa_acre_data_sources.md`.
+1. Mirror the directory structure documented in
+   [`docs/data_sources.md`](docs/data_sources.md).
+2. Download the FSA acre ZIPs listed in
+   [`data/fsa_acre_data_sources.md`](data/fsa_acre_data_sources.md).
 3. Pull the SVI shapefiles from `https://svi.cdc.gov/Documents/Data/`
    for years 2000, 2010, 2014, 2016, 2018, 2020.
 4. Pull NASS county yields with the Quick-Stats API.
 
-The two shipped ML notebooks are self-contained relative to that root.
+Run notebooks in the order documented in
+[`notebooks/README.md`](notebooks/README.md).
 
 ---
 
 ## Citations and Acknowledgements
 
-- **USDA Farm Service Agency** — crop-acre eFOIA data (2009-2023, public domain).
+- **USDA Farm Service Agency** — crop-acre eFOIA data (2009–2023, public domain).
 - **USDA NASS Quick-Stats** — county yield series.
-- **CDC / ATSDR** — Social Vulnerability Index (SVI), 2000–2020.
-- **NOAA National Centers for Environmental Information** — climate regions, heatwave records.
+- **CDC / ATSDR** — Social Vulnerability Index, 2000–2020.
+- **NOAA NCEI** — climate regions, temperature normals, heatwave records.
 - **National Drought Mitigation Center** — US Drought Monitor.
 - **USGS** — county-level water-use estimates.
 - **USDA Risk Management Agency** — crop-insurance loss-cause records.
+- **US Census Bureau** — TIGER county boundaries.
 
 ---
 
