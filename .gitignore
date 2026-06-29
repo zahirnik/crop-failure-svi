@@ -1,0 +1,48 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+*.egg-info/
+*.egg
+
+# --- Virtualenvs ---
+.venv/
+venv/
+env/
+
+# --- Editor / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+
+# --- Notebooks checkpoints ---
+.ipynb_checkpoints/
+
+# --- Large intermediate data (not in repo) ---
+*.parquet
+*.gdb/
+*.shp
+*.shx
+*.dbf
+*.cpg
+*.prj
+*.qix
+*.sbn
+*.sbx
+*.xlsx
+*.zip
+fsa_acres_*
+SVI_*_US/
+
+# --- Logs ---
+*.log
+logs/
